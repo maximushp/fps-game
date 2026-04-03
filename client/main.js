@@ -1,6 +1,6 @@
 import { Player } from "./player.js";
 
-const socket = io("https://SEU-SERVIDOR.onrender.com"); // 🔥 TROQUE AQUI
+const socket = io("https://fps-game-q3i8.onrender.com"); // 🔥 TROQUE AQUI
 
 let scene = new THREE.Scene();
 scene.background = new THREE.Color(0x202020);
