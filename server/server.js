@@ -10,8 +10,8 @@ const io = new Server(server,{
 });
 
 const weapons={
-  pistol:{damage:20, range:8},
-  rifle:{damage:10, range:12}
+  pistol:{damage:20, range:10},
+  rifle:{damage:10, range:15}
 };
 
 let players={};
@@ -24,6 +24,12 @@ function distance(a,b){
   );
 }
 
+function respawn(p){
+  p.health=100;
+  p.x=Math.random()*20-10;
+  p.z=Math.random()*20-10;
+}
+
 io.on("connection", socket=>{
 
   players[socket.id]={
@@ -34,7 +40,7 @@ io.on("connection", socket=>{
     health:100
   };
 
-  socket.on("move",data=>{
+  socket.on("move", data=>{
     let p=players[socket.id];
     if(!p) return;
 
@@ -43,7 +49,7 @@ io.on("connection", socket=>{
     p.z=data.z;
   });
 
-  socket.on("shoot",data=>{
+  socket.on("shoot", data=>{
     let shooter=players[socket.id];
     if(!shooter) return;
 
@@ -56,7 +62,7 @@ io.on("connection", socket=>{
       let dist=distance(shooter,target);
 
       if(dist<w.range){
-        target.health -= w.damage;
+        target.health-=w.damage;
 
         io.emit("damage",{
           id:target.id,
@@ -64,14 +70,12 @@ io.on("connection", socket=>{
         });
 
         if(target.health<=0){
-          target.health=100;
-          target.x=Math.random()*10;
-          target.z=Math.random()*10;
-
-          io.emit("kill",{
+          io.emit("killFeed",{
             killer:socket.id,
             victim:target.id
           });
+
+          respawn(target);
         }
       }
     });
@@ -87,5 +91,4 @@ io.on("connection", socket=>{
   },50);
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT);
+server.listen(process.env.PORT || 3000);
