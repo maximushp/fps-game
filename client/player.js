@@ -1,81 +1,116 @@
 export class Player {
-  constructor(camera, socket){
-    this.camera = camera;
-    this.socket = socket;
+  constructor(camera,socket){
+    this.camera=camera;
+    this.socket=socket;
 
     this.camera.position.set(0,1.6,5);
 
-    this.speed = 0.15;
-    this.sensitivity = 0.002;
+    this.health=100;
 
-    this.move = {f:0,b:0,l:0,r:0};
+    this.speed=0.15;
+    this.sensitivity=0.002;
 
-    this.raycaster = new THREE.Raycaster();
+    this.move={f:0,b:0,l:0,r:0};
 
-    this.initControls();
+    this.weapons={
+      pistol:{damage:20, fireRate:400},
+      rifle:{damage:10, fireRate:100}
+    };
+
+    this.currentWeapon="pistol";
+    this.lastShot=0;
+
+    this.init();
   }
 
-  initControls(){
+  init(){
 
-    document.addEventListener("mousemove", e=>{
+    document.addEventListener("mousemove",e=>{
       if(document.pointerLockElement){
+        this.camera.rotation.y -= e.movementX*this.sensitivity;
+        this.camera.rotation.x -= e.movementY*this.sensitivity;
 
-        this.camera.rotation.y -= e.movementX * this.sensitivity;
-        this.camera.rotation.x -= e.movementY * this.sensitivity;
-
-        this.camera.rotation.x = Math.max(
-          -Math.PI/2,
-          Math.min(Math.PI/2, this.camera.rotation.x)
-        );
+        this.camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2,this.camera.rotation.x));
       }
     });
 
-    document.addEventListener("keydown", e=>{
+    document.addEventListener("keydown",e=>{
       if(e.code==="KeyW") this.move.f=1;
       if(e.code==="KeyS") this.move.b=1;
       if(e.code==="KeyA") this.move.l=1;
       if(e.code==="KeyD") this.move.r=1;
+
+      if(e.code==="Digit1"){
+        this.currentWeapon="pistol";
+        document.getElementById("weapon").innerText="🔫 pistol";
+      }
+
+      if(e.code==="Digit2"){
+        this.currentWeapon="rifle";
+        document.getElementById("weapon").innerText="🔫 rifle";
+      }
     });
 
-    document.addEventListener("keyup", e=>{
+    document.addEventListener("keyup",e=>{
       if(e.code==="KeyW") this.move.f=0;
       if(e.code==="KeyS") this.move.b=0;
       if(e.code==="KeyA") this.move.l=0;
       if(e.code==="KeyD") this.move.r=0;
     });
 
-    document.addEventListener("click", ()=>{
+    document.addEventListener("click",()=>{
       if(!document.pointerLockElement) return;
 
-      this.socket.emit("shoot",{});
+      let w=this.weapons[this.currentWeapon];
 
-      this.raycaster.setFromCamera(
-        new THREE.Vector2(0,0),
-        this.camera
-      );
+      if(Date.now()-this.lastShot<w.fireRate) return;
+      this.lastShot=Date.now();
 
-      const hits = this.raycaster.intersectObjects(window.scene.children,true);
+      // som
+      let s=document.getElementById("shootSound");
+      s.currentTime=0;
+      s.play();
 
-      hits.forEach(hit=>{
-        if(hit.object.userData.enemy){
-          hit.object.userData.takeDamage(20);
-        }
+      // recoil
+      this.camera.rotation.x -= 0.05;
+
+      // flash
+      window.flash.visible=true;
+      setTimeout(()=>window.flash.visible=false,50);
+
+      // envia tiro
+      this.socket.emit("shoot",{
+        weapon:this.currentWeapon,
+        x:this.camera.position.x,
+        y:this.camera.position.y,
+        z:this.camera.position.z
       });
+    });
+
+    this.socket.on("damage", data=>{
+      if(data.id===this.socket.id){
+        this.health -= data.amount;
+        document.getElementById("health").innerText="❤️ "+this.health;
+
+        if(this.health<=0){
+          alert("Você morreu!");
+          location.reload();
+        }
+      }
     });
   }
 
   update(){
-    let forward = new THREE.Vector3();
-    this.camera.getWorldDirection(forward);
-    forward.y = 0;
-    forward.normalize();
+    let f=new THREE.Vector3();
+    this.camera.getWorldDirection(f);
+    f.y=0; f.normalize();
 
-    let right = new THREE.Vector3();
-    right.crossVectors(forward,new THREE.Vector3(0,1,0)).normalize();
+    let r=new THREE.Vector3();
+    r.crossVectors(f,new THREE.Vector3(0,1,0)).normalize();
 
-    if(this.move.f) this.camera.position.add(forward.clone().multiplyScalar(this.speed));
-    if(this.move.b) this.camera.position.add(forward.clone().multiplyScalar(-this.speed));
-    if(this.move.l) this.camera.position.add(right.clone().multiplyScalar(-this.speed));
-    if(this.move.r) this.camera.position.add(right.clone().multiplyScalar(this.speed));
+    if(this.move.f) this.camera.position.add(f.clone().multiplyScalar(this.speed));
+    if(this.move.b) this.camera.position.add(f.clone().multiplyScalar(-this.speed));
+    if(this.move.l) this.camera.position.add(r.clone().multiplyScalar(-this.speed));
+    if(this.move.r) this.camera.position.add(r.clone().multiplyScalar(this.speed));
   }
 }
