@@ -5,6 +5,8 @@ export class Player {
 
     this.camera.position.set(0, 1.6, 5);
 
+    this.speed = 0.15;
+
     this.move = {
       forward: false,
       back: false,
@@ -12,19 +14,18 @@ export class Player {
       right: false
     };
 
-    this.speed = 0.1;
-
     this.initControls();
   }
 
   initControls() {
-    // 🎯 MOUSE LOOK
+
+    // 🎯 MOUSE
     document.addEventListener("mousemove", (e) => {
       if (document.pointerLockElement) {
         this.camera.rotation.y -= e.movementX * 0.002;
         this.camera.rotation.x -= e.movementY * 0.002;
 
-        // limitar olhar vertical
+        // limitar vertical
         this.camera.rotation.x = Math.max(
           -Math.PI / 2,
           Math.min(Math.PI / 2, this.camera.rotation.x)
@@ -32,7 +33,7 @@ export class Player {
       }
     });
 
-    // ⌨️ MOVIMENTO
+    // ⌨️ TECLADO
     document.addEventListener("keydown", (e) => {
       if (e.code === "KeyW") this.move.forward = true;
       if (e.code === "KeyS") this.move.back = true;
@@ -56,25 +57,30 @@ export class Player {
   }
 
   update() {
-    const direction = new THREE.Vector3();
+    const speed = this.speed;
 
-    if (this.move.forward) direction.z -= 1;
-    if (this.move.back) direction.z += 1;
-    if (this.move.left) direction.x -= 1;
-    if (this.move.right) direction.x += 1;
+    let forward = new THREE.Vector3();
+    this.camera.getWorldDirection(forward);
+    forward.y = 0;
+    forward.normalize();
 
-    direction.normalize();
+    let right = new THREE.Vector3();
+    right.crossVectors(forward, new THREE.Vector3(0,1,0)).normalize();
 
-    const angle = this.camera.rotation.y;
+    if (this.move.forward) {
+      this.camera.position.add(forward.clone().multiplyScalar(speed));
+    }
 
-    this.camera.position.x +=
-      (direction.x * Math.cos(angle) -
-        direction.z * Math.sin(angle)) *
-      this.speed;
+    if (this.move.back) {
+      this.camera.position.add(forward.clone().multiplyScalar(-speed));
+    }
 
-    this.camera.position.z +=
-      (direction.z * Math.cos(angle) +
-        direction.x * Math.sin(angle)) *
-      this.speed;
+    if (this.move.left) {
+      this.camera.position.add(right.clone().multiplyScalar(-speed));
+    }
+
+    if (this.move.right) {
+      this.camera.position.add(right.clone().multiplyScalar(speed));
+    }
   }
 }
