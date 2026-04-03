@@ -1,6 +1,7 @@
 import { Player } from "./player.js";
 
-const socket = io("https://fps-game-q3i8.onrender.com"); // 🔥 TROQUE AQUI
+// 🔥 COLOQUE SEU LINK DO RENDER AQUI
+const socket = io("https://fps-game-q3i8.onrender.com");
 
 let scene = new THREE.Scene();
 scene.background = new THREE.Color(0x202020);
@@ -28,7 +29,7 @@ const floor = new THREE.Mesh(
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// 🧱 OBSTÁCULOS
+// 🧱 OBJETOS
 for (let i = 0; i < 20; i++) {
   const box = new THREE.Mesh(
     new THREE.BoxGeometry(2, 2, 2),
@@ -42,11 +43,22 @@ for (let i = 0; i < 20; i++) {
   scene.add(box);
 }
 
+// 🔫 ARMA (fixa na câmera)
+const gun = new THREE.Mesh(
+  new THREE.BoxGeometry(0.3, 0.2, 1),
+  new THREE.MeshStandardMaterial({ color: 0x222222 })
+);
+
+gun.position.set(0.3, -0.3, -0.8);
+camera.add(gun);
+scene.add(camera);
+
+// 👤 PLAYER
 let player = new Player(camera, socket);
 
+// 👥 OUTROS PLAYERS
 let otherPlayers = {};
 
-// 📡 RECEBE ESTADO DO SERVIDOR
 socket.on("state", (players) => {
   Object.values(players).forEach((p) => {
     if (p.id === socket.id) return;
@@ -60,7 +72,6 @@ socket.on("state", (players) => {
       otherPlayers[p.id] = mesh;
     }
 
-    // interpolação suave
     otherPlayers[p.id].position.lerp(
       new THREE.Vector3(p.x, p.y, p.z),
       0.2
@@ -68,7 +79,6 @@ socket.on("state", (players) => {
   });
 });
 
-// ❌ REMOVER PLAYER DESCONECTADO
 socket.on("playerDisconnected", (id) => {
   if (otherPlayers[id]) {
     scene.remove(otherPlayers[id]);
@@ -76,7 +86,7 @@ socket.on("playerDisconnected", (id) => {
   }
 });
 
-// 🖱️ CLICK PRA COMEÇAR
+// 🖱️ START
 const start = document.getElementById("start");
 
 start.addEventListener("click", () => {
@@ -90,7 +100,6 @@ function animate() {
 
   player.update();
 
-  // envia posição pro servidor
   socket.emit("move", {
     x: camera.position.x,
     y: camera.position.y,
@@ -103,7 +112,7 @@ function animate() {
 
 animate();
 
-// 🔄 RESPONSIVO
+// 🔄 RESIZE
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
