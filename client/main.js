@@ -1,9 +1,12 @@
 import { Player } from "./player.js";
+import { Enemy } from "./enemy.js";
 
-// 🔥 COLOQUE SEU LINK DO RENDER AQUI
+// 🔥 SEU SERVIDOR
 const socket = io("https://fps-game-q3i8.onrender.com");
 
 let scene = new THREE.Scene();
+window.scene = scene;
+
 scene.background = new THREE.Color(0x202020);
 
 let camera = new THREE.PerspectiveCamera(
@@ -29,92 +32,92 @@ const floor = new THREE.Mesh(
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// 🧱 OBJETOS
+// 🧱 CAIXAS
 for (let i = 0; i < 20; i++) {
-  const box = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 2, 2),
+  let box = new THREE.Mesh(
+    new THREE.BoxGeometry(2,2,2),
     new THREE.MeshStandardMaterial({ color: 0x888888 })
   );
-  box.position.set(
-    Math.random() * 40 - 20,
-    1,
-    Math.random() * 40 - 20
-  );
+  box.position.set(Math.random()*40-20,1,Math.random()*40-20);
   scene.add(box);
 }
 
-// 🔫 ARMA (fixa na câmera)
+// 🔫 ARMA
 const gun = new THREE.Mesh(
-  new THREE.BoxGeometry(0.3, 0.2, 1),
+  new THREE.BoxGeometry(0.3,0.2,1),
   new THREE.MeshStandardMaterial({ color: 0x222222 })
 );
-
-gun.position.set(0.3, -0.3, -0.8);
+gun.position.set(0.3,-0.3,-0.8);
 camera.add(gun);
 scene.add(camera);
 
 // 👤 PLAYER
 let player = new Player(camera, socket);
 
-// 👥 OUTROS PLAYERS
-let otherPlayers = {};
+// 🤖 BOTS
+let enemies = [];
+for (let i=0;i<5;i++){
+  enemies.push(new Enemy(scene));
+}
 
-socket.on("state", (players) => {
-  Object.values(players).forEach((p) => {
-    if (p.id === socket.id) return;
+// 👥 MULTIPLAYER
+let others = {};
 
-    if (!otherPlayers[p.id]) {
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 2, 1),
-        new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+socket.on("state", players => {
+  Object.values(players).forEach(p=>{
+    if(p.id === socket.id) return;
+
+    if(!others[p.id]){
+      let mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1,2,1),
+        new THREE.MeshStandardMaterial({color:0x00ff00})
       );
       scene.add(mesh);
-      otherPlayers[p.id] = mesh;
+      others[p.id] = mesh;
     }
 
-    otherPlayers[p.id].position.lerp(
-      new THREE.Vector3(p.x, p.y, p.z),
+    others[p.id].position.lerp(
+      new THREE.Vector3(p.x,p.y,p.z),
       0.2
     );
   });
 });
 
-socket.on("playerDisconnected", (id) => {
-  if (otherPlayers[id]) {
-    scene.remove(otherPlayers[id]);
-    delete otherPlayers[id];
+socket.on("playerDisconnected", id=>{
+  if(others[id]){
+    scene.remove(others[id]);
+    delete others[id];
   }
 });
 
-// 🖱️ START
-const start = document.getElementById("start");
-
-start.addEventListener("click", () => {
+// START
+document.getElementById("start").onclick = ()=>{
   document.body.requestPointerLock();
-  start.style.display = "none";
-});
+  document.getElementById("start").style.display="none";
+};
 
-// 🔁 LOOP
-function animate() {
+// LOOP
+function animate(){
   requestAnimationFrame(animate);
 
   player.update();
 
-  socket.emit("move", {
-    x: camera.position.x,
-    y: camera.position.y,
-    z: camera.position.z,
-    rotY: camera.rotation.y
+  enemies.forEach(e=>e.update(player));
+
+  socket.emit("move",{
+    x:camera.position.x,
+    y:camera.position.y,
+    z:camera.position.z,
+    rotY:camera.rotation.y
   });
 
-  renderer.render(scene, camera);
+  renderer.render(scene,camera);
 }
-
 animate();
 
-// 🔄 RESIZE
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+// RESIZE
+window.addEventListener("resize",()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
