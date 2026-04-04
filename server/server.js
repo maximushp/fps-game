@@ -34,11 +34,23 @@ io.on("connection", socket=>{
 
   players[socket.id]={
     id:socket.id,
+    name:"Player",
     x:Math.random()*10,
     y:1.6,
     z:Math.random()*10,
     health:100
   };
+
+  socket.on("setName", name=>{
+    if(players[socket.id]){
+      players[socket.id].name = name;
+
+      io.emit("playerJoined", {
+        id: socket.id,
+        name: name
+      });
+    }
+  });
 
   socket.on("move", data=>{
     let p=players[socket.id];
@@ -72,7 +84,9 @@ io.on("connection", socket=>{
         if(target.health<=0){
           io.emit("killFeed",{
             killer:socket.id,
-            victim:target.id
+            victim:target.id,
+            killerName:shooter.name,
+            victimName:target.name
           });
 
           respawn(target);
@@ -82,7 +96,15 @@ io.on("connection", socket=>{
   });
 
   socket.on("disconnect",()=>{
+    const name = players[socket.id]?.name || "Player";
+
     delete players[socket.id];
+
+    io.emit("playerLeft", {
+      id: socket.id,
+      name: name
+    });
+
     io.emit("disconnectPlayer", socket.id);
   });
 
