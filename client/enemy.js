@@ -2,20 +2,33 @@ export class Enemy {
   constructor(scene){
     this.scene = scene;
 
-    // ================= CORPO HUMANO =================
+    const loader = new THREE.TextureLoader();
+
+    // 🔥 rostos reais (pode trocar depois)
+    const faces = [
+      "https://randomuser.me/api/portraits/men/1.jpg",
+      "https://randomuser.me/api/portraits/men/2.jpg",
+      "https://randomuser.me/api/portraits/women/1.jpg",
+      "https://randomuser.me/api/portraits/women/2.jpg"
+    ];
+
+    const randomFace = faces[Math.floor(Math.random()*faces.length)];
+    const faceTexture = loader.load(randomFace);
+
+    // ================= PERSONAGEM =================
     this.mesh = new THREE.Group();
 
     // corpo
     const body = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.5, 1.2, 4, 8),
-      new THREE.MeshStandardMaterial({ color: 0x5555ff })
+      new THREE.MeshStandardMaterial({ color: 0x4444aa })
     );
     body.position.y = 1;
 
-    // cabeça
+    // cabeça com rosto
     const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.35),
-      new THREE.MeshStandardMaterial({ color: 0xffcc99 })
+      new THREE.SphereGeometry(0.35, 32, 32),
+      new THREE.MeshStandardMaterial({ map: faceTexture })
     );
     head.position.y = 2.1;
 
@@ -40,7 +53,7 @@ export class Enemy {
     const legR = legL.clone();
     legR.position.x = 0.25;
 
-    // montar
+    // montar personagem
     this.mesh.add(body, head, armL, armR, legL, legR);
 
     this.respawn();
@@ -64,7 +77,7 @@ export class Enemy {
     let dist = dir.length();
     dir.normalize();
 
-    // olhar para player
+    // olhar pro player
     this.mesh.lookAt(player.camera.position.x, this.mesh.position.y, player.camera.position.z);
 
     // andar
@@ -81,23 +94,6 @@ export class Enemy {
 
   takeDamage(d){
     this.health -= d;
-
-    // efeito visual ao tomar dano
-    this.mesh.children.forEach(part=>{
-      if(part.material){
-        part.material.color.set(0xff0000);
-      }
-    });
-
-    setTimeout(()=>{
-      this.mesh.children.forEach(part=>{
-        if(part.material){
-          part.material.color.setHex(
-            part === this.mesh.children[1] ? 0xffcc99 : 0x5555ff
-          );
-        }
-      });
-    },100);
 
     if(this.health <= 0){
       this.respawn();
