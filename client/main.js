@@ -25,7 +25,7 @@ let floor = new THREE.Mesh(
 floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
-// caixas
+// obstáculos
 for(let i=0;i<20;i++){
   let box = new THREE.Mesh(
     new THREE.BoxGeometry(2,2,2),
@@ -59,7 +59,7 @@ for(let i=0;i<5;i++){
   enemies.push(new Enemy(scene));
 }
 
-// multiplayer players
+// multiplayer
 let others = {};
 
 socket.on("state", players=>{
@@ -96,15 +96,36 @@ document.body.appendChild(killFeed);
 
 socket.on("killFeed", data=>{
   let msg=document.createElement("div");
-  msg.innerText=`${data.killer} matou ${data.victim}`;
+  msg.innerText=`${data.killerName} matou ${data.victimName}`;
   killFeed.appendChild(msg);
   setTimeout(()=>msg.remove(),3000);
 });
 
-// start
-document.getElementById("start").onclick=()=>{
+socket.on("playerJoined", data=>{
+  let msg=document.createElement("div");
+  msg.innerText=`🟢 ${data.name} entrou`;
+  killFeed.appendChild(msg);
+  setTimeout(()=>msg.remove(),3000);
+});
+
+socket.on("playerLeft", data=>{
+  let msg=document.createElement("div");
+  msg.innerText=`🔴 ${data.name} saiu`;
+  killFeed.appendChild(msg);
+  setTimeout(()=>msg.remove(),3000);
+});
+
+// menu
+const nicknameInput = document.getElementById("nickname");
+const playBtn = document.getElementById("playBtn");
+const menu = document.getElementById("menu");
+
+playBtn.onclick = ()=>{
+  const name = nicknameInput.value.trim() || "Player";
+  socket.emit("setName", name);
+
+  menu.style.display="none";
   document.body.requestPointerLock();
-  start.style.display="none";
   player.isPlaying = true;
 };
 
