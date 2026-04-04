@@ -7,7 +7,6 @@ const socket = io("https://fps-game-q3i8.onrender.com");
 let scene = new THREE.Scene();
 window.scene = scene;
 
-// céu
 scene.background = new THREE.Color(0x87ceeb);
 
 // câmera
@@ -104,6 +103,38 @@ for(let i=0;i<40;i++){
   );
 }
 
+// ================= FOTOS DE PARANAGUÁ =================
+const photoLoader = new THREE.TextureLoader();
+
+const photos = [
+  "https://upload.wikimedia.org/wikipedia/commons/5/5c/Paranagua_Harbor.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/3/3a/Paranagua_city.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/0/0c/Ilha_do_Mel_Parana.jpg"
+];
+
+function createBillboard(x, z, img){
+  const texture = photoLoader.load(img);
+
+  const billboard = new THREE.Mesh(
+    new THREE.PlaneGeometry(8,5),
+    new THREE.MeshStandardMaterial({ map: texture })
+  );
+
+  billboard.position.set(x, 3, z);
+  billboard.userData.lookAtPlayer = true;
+
+  scene.add(billboard);
+}
+
+// espalhar fotos
+for(let i=0;i<15;i++){
+  createBillboard(
+    Math.random()*200 - 100,
+    Math.random()*200 - 100,
+    photos[Math.floor(Math.random()*photos.length)]
+  );
+}
+
 // ================= ARMA =================
 const gun = new THREE.Mesh(
   new THREE.BoxGeometry(0.3,0.2,1),
@@ -113,7 +144,7 @@ gun.position.set(0.3,-0.3,-0.8);
 camera.add(gun);
 scene.add(camera);
 
-// flash tiro
+// flash
 const flash = new THREE.PointLight(0xffaa00,2,3);
 gun.add(flash);
 flash.visible=false;
@@ -219,6 +250,13 @@ function animate(){
 
   player.update();
   enemies.forEach(e=>e.update(player));
+
+  // outdoors olhando para o player
+  scene.traverse(obj=>{
+    if(obj.userData.lookAtPlayer){
+      obj.lookAt(camera.position);
+    }
+  });
 
   socket.emit("move",{
     x:camera.position.x,
