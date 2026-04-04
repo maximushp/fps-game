@@ -24,11 +24,11 @@ scene.add(new THREE.HemisphereLight(0xffffff,0x444444,1.2));
 // ================= TEXTURAS =================
 const loader = new THREE.TextureLoader();
 
-const roadTexture = loader.load("https://threejs.org/examples/textures/brick_diffuse.jpg");
+const roadTexture = loader.load("https://images.unsplash.com/photo-1507525428034-b723cf961d3e");
 roadTexture.wrapS = roadTexture.wrapT = THREE.RepeatWrapping;
 roadTexture.repeat.set(4,4);
 
-const buildingTexture = loader.load("https://threejs.org/examples/textures/uv_grid_opengl.jpg");
+const buildingTexture = loader.load("https://images.unsplash.com/photo-1494526585095-c41746248156");
 
 // ================= CIDADE =================
 const citySize = 200;
@@ -42,7 +42,48 @@ let ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-// ruas + prédios
+// ================= OUTDOOR =================
+const photoLoader = new THREE.TextureLoader();
+
+const photos = [
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
+  "https://images.unsplash.com/photo-1503264116251-35a269479413",
+  "https://images.unsplash.com/photo-1491553895911-0055eca6402d"
+];
+
+function createOutdoor(building, img){
+  const texture = photoLoader.load(img);
+
+  const outdoor = new THREE.Mesh(
+    new THREE.PlaneGeometry(6,4),
+    new THREE.MeshStandardMaterial({ map: texture })
+  );
+
+  outdoor.position.y = building.geometry.parameters.height * 0.6;
+
+  const side = Math.floor(Math.random()*4);
+  const size = 5;
+
+  if(side === 0){
+    outdoor.position.set(0, outdoor.position.y, size + 0.01);
+  }
+  if(side === 1){
+    outdoor.position.set(0, outdoor.position.y, -size - 0.01);
+    outdoor.rotation.y = Math.PI;
+  }
+  if(side === 2){
+    outdoor.position.set(size + 0.01, outdoor.position.y, 0);
+    outdoor.rotation.y = -Math.PI/2;
+  }
+  if(side === 3){
+    outdoor.position.set(-size - 0.01, outdoor.position.y, 0);
+    outdoor.rotation.y = Math.PI/2;
+  }
+
+  building.add(outdoor);
+}
+
+// ================= MAPA =================
 for(let x = -citySize/2; x < citySize/2; x += blockSize){
   for(let z = -citySize/2; z < citySize/2; z += blockSize){
 
@@ -72,6 +113,14 @@ for(let x = -citySize/2; x < citySize/2; x += blockSize){
       );
 
       scene.add(building);
+
+      // outdoor
+      if(Math.random() > 0.5){
+        createOutdoor(
+          building,
+          photos[Math.floor(Math.random()*photos.length)]
+        );
+      }
     }
   }
 }
@@ -95,43 +144,10 @@ function createTree(x,z){
   scene.add(leaves);
 }
 
-// espalhar árvores
 for(let i=0;i<40;i++){
   createTree(
     Math.random()*200 - 100,
     Math.random()*200 - 100
-  );
-}
-
-// ================= FOTOS DE PARANAGUÁ =================
-const photoLoader = new THREE.TextureLoader();
-
-const photos = [
-  "https://www.administracao.pr.gov.br/sites/default/arquivos_restritos/files/imagem/2025-07/8144.jpg",
-  "https://melevaviajar.com.br/wp-content/uploads/2022/10/O-que-fazer-em-Paranagua-rua-da-praia.jpg",
-  "https://melevaviajar.com.br/wp-content/uploads/2022/10/O-que-fazer-em-Paranagua.jpg"
-];
-
-function createBillboard(x, z, img){
-  const texture = photoLoader.load(img);
-
-  const billboard = new THREE.Mesh(
-    new THREE.PlaneGeometry(8,5),
-    new THREE.MeshStandardMaterial({ map: texture })
-  );
-
-  billboard.position.set(x, 3, z);
-  billboard.userData.lookAtPlayer = true;
-
-  scene.add(billboard);
-}
-
-// espalhar fotos
-for(let i=0;i<15;i++){
-  createBillboard(
-    Math.random()*200 - 100,
-    Math.random()*200 - 100,
-    photos[Math.floor(Math.random()*photos.length)]
   );
 }
 
@@ -186,13 +202,12 @@ socket.on("disconnectPlayer", id=>{
   }
 });
 
-// ================= KILL FEED =================
+// ================= HUD =================
 const killFeed = document.createElement("div");
 killFeed.style.position="absolute";
 killFeed.style.top="10px";
 killFeed.style.right="10px";
 killFeed.style.color="white";
-killFeed.style.fontSize="14px";
 document.body.appendChild(killFeed);
 
 socket.on("killFeed", data=>{
@@ -214,18 +229,6 @@ socket.on("playerLeft", data=>{
   msg.innerText=`🔴 ${data.name} saiu`;
   killFeed.appendChild(msg);
   setTimeout(()=>msg.remove(),3000);
-});
-
-socket.on("existingPlayers", players=>{
-  players.forEach(p=>{
-    if(p.id === socket.id) return;
-
-    let msg=document.createElement("div");
-    msg.innerText=`🟢 ${p.name} já está no jogo`;
-    killFeed.appendChild(msg);
-
-    setTimeout(()=>msg.remove(),3000);
-  });
 });
 
 // ================= MENU =================
@@ -250,13 +253,6 @@ function animate(){
 
   player.update();
   enemies.forEach(e=>e.update(player));
-
-  // outdoors olhando para o player
-  scene.traverse(obj=>{
-    if(obj.userData.lookAtPlayer){
-      obj.lookAt(camera.position);
-    }
-  });
 
   socket.emit("move",{
     x:camera.position.x,
