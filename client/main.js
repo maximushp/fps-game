@@ -3,39 +3,59 @@ import { Enemy } from "./enemy.js";
 
 const socket = io("https://fps-game-q3i8.onrender.com");
 
+// ================= SCENE =================
 let scene = new THREE.Scene();
 window.scene = scene;
 
-scene.background = new THREE.Color(0x202020);
+// céu
+scene.background = new THREE.Color(0x87ceeb);
 
+// câmera
 let camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
 
+// render
 let renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(1);
 document.body.appendChild(renderer.domElement);
 
 // luz
 scene.add(new THREE.HemisphereLight(0xffffff,0x444444,1.2));
 
+// ================= TEXTURAS =================
+const loader = new THREE.TextureLoader();
+
 // chão
+const groundTexture = loader.load("https://threejs.org/examples/textures/terrain/grasslight-big.jpg");
+groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+groundTexture.repeat.set(50,50);
+
 let floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(100,100),
-  new THREE.MeshStandardMaterial({color:0x666666})
+  new THREE.PlaneGeometry(500,500),
+  new THREE.MeshStandardMaterial({ map: groundTexture })
 );
 floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
-// obstáculos
-for(let i=0;i<20;i++){
+// caixas
+const boxTexture = loader.load("https://threejs.org/examples/textures/crate.gif");
+
+for(let i=0;i<50;i++){
   let box = new THREE.Mesh(
     new THREE.BoxGeometry(2,2,2),
-    new THREE.MeshStandardMaterial({color:0x888888})
+    new THREE.MeshStandardMaterial({ map: boxTexture })
   );
-  box.position.set(Math.random()*40-20,1,Math.random()*40-20);
+
+  box.position.set(
+    Math.random()*200 - 100,
+    1,
+    Math.random()*200 - 100
+  );
+
   scene.add(box);
 }
 
-// arma
+// ================= ARMA =================
 const gun = new THREE.Mesh(
   new THREE.BoxGeometry(0.3,0.2,1),
   new THREE.MeshStandardMaterial({color:0x222222})
@@ -44,22 +64,22 @@ gun.position.set(0.3,-0.3,-0.8);
 camera.add(gun);
 scene.add(camera);
 
-// flash
+// flash tiro
 const flash = new THREE.PointLight(0xffaa00,2,3);
 gun.add(flash);
-flash.visible=false;
+flash.visible = false;
 window.flash = flash;
 
-// player
+// ================= PLAYER =================
 let player = new Player(camera, socket);
 
-// bots
+// ================= BOTS =================
 let enemies = [];
 for(let i=0;i<5;i++){
   enemies.push(new Enemy(scene));
 }
 
-// multiplayer
+// ================= MULTIPLAYER =================
 let others = {};
 
 socket.on("state", players=>{
@@ -86,12 +106,13 @@ socket.on("disconnectPlayer", id=>{
   }
 });
 
-// kill feed
+// ================= KILL FEED =================
 const killFeed = document.createElement("div");
 killFeed.style.position="absolute";
 killFeed.style.top="10px";
 killFeed.style.right="10px";
 killFeed.style.color="white";
+killFeed.style.fontSize="14px";
 document.body.appendChild(killFeed);
 
 socket.on("killFeed", data=>{
@@ -115,21 +136,36 @@ socket.on("playerLeft", data=>{
   setTimeout(()=>msg.remove(),3000);
 });
 
-// menu
+// jogadores já conectados
+socket.on("existingPlayers", players=>{
+  players.forEach(p=>{
+    if(p.id === socket.id) return;
+
+    let msg=document.createElement("div");
+    msg.innerText=`🟢 ${p.name} já está no jogo`;
+    killFeed.appendChild(msg);
+
+    setTimeout(()=>msg.remove(),3000);
+  });
+});
+
+// ================= MENU =================
 const nicknameInput = document.getElementById("nickname");
 const playBtn = document.getElementById("playBtn");
 const menu = document.getElementById("menu");
 
 playBtn.onclick = ()=>{
   const name = nicknameInput.value.trim() || "Player";
+
   socket.emit("setName", name);
 
   menu.style.display="none";
+
   document.body.requestPointerLock();
   player.isPlaying = true;
 };
 
-// loop
+// ================= LOOP =================
 function animate(){
   requestAnimationFrame(animate);
 
@@ -145,3 +181,10 @@ function animate(){
   renderer.render(scene,camera);
 }
 animate();
+
+// ================= RESIZE =================
+window.addEventListener("resize", ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
