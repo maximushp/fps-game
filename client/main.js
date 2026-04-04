@@ -25,34 +25,83 @@ scene.add(new THREE.HemisphereLight(0xffffff,0x444444,1.2));
 // ================= TEXTURAS =================
 const loader = new THREE.TextureLoader();
 
-// chão
-const groundTexture = loader.load("https://threejs.org/examples/textures/terrain/grasslight-big.jpg");
-groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
-groundTexture.repeat.set(50,50);
+const roadTexture = loader.load("https://threejs.org/examples/textures/brick_diffuse.jpg");
+roadTexture.wrapS = roadTexture.wrapT = THREE.RepeatWrapping;
+roadTexture.repeat.set(4,4);
 
-let floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(500,500),
-  new THREE.MeshStandardMaterial({ map: groundTexture })
+const buildingTexture = loader.load("https://threejs.org/examples/textures/uv_grid_opengl.jpg");
+
+// ================= CIDADE =================
+const citySize = 200;
+const blockSize = 20;
+
+// chão base
+let ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(citySize, citySize),
+  new THREE.MeshStandardMaterial({ color: 0x555555 })
 );
-floor.rotation.x = -Math.PI/2;
-scene.add(floor);
+ground.rotation.x = -Math.PI/2;
+scene.add(ground);
 
-// caixas
-const boxTexture = loader.load("https://threejs.org/examples/textures/crate.gif");
+// ruas + prédios
+for(let x = -citySize/2; x < citySize/2; x += blockSize){
+  for(let z = -citySize/2; z < citySize/2; z += blockSize){
 
-for(let i=0;i<50;i++){
-  let box = new THREE.Mesh(
-    new THREE.BoxGeometry(2,2,2),
-    new THREE.MeshStandardMaterial({ map: boxTexture })
+    // rua
+    let road = new THREE.Mesh(
+      new THREE.PlaneGeometry(blockSize, blockSize),
+      new THREE.MeshStandardMaterial({ map: roadTexture })
+    );
+
+    road.rotation.x = -Math.PI/2;
+    road.position.set(x + blockSize/2, 0.01, z + blockSize/2);
+    scene.add(road);
+
+    // prédio
+    if(Math.random() > 0.3){
+      let height = Math.random()*15 + 5;
+
+      let building = new THREE.Mesh(
+        new THREE.BoxGeometry(10, height, 10),
+        new THREE.MeshStandardMaterial({ map: buildingTexture })
+      );
+
+      building.position.set(
+        x + blockSize/2,
+        height/2,
+        z + blockSize/2
+      );
+
+      scene.add(building);
+    }
+  }
+}
+
+// ================= ÁRVORES =================
+function createTree(x,z){
+  let trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3,0.3,2),
+    new THREE.MeshStandardMaterial({color:0x8B4513})
   );
 
-  box.position.set(
+  let leaves = new THREE.Mesh(
+    new THREE.SphereGeometry(1.5),
+    new THREE.MeshStandardMaterial({color:0x228B22})
+  );
+
+  trunk.position.set(x,1,z);
+  leaves.position.set(x,3,z);
+
+  scene.add(trunk);
+  scene.add(leaves);
+}
+
+// espalhar árvores
+for(let i=0;i<40;i++){
+  createTree(
     Math.random()*200 - 100,
-    1,
     Math.random()*200 - 100
   );
-
-  scene.add(box);
 }
 
 // ================= ARMA =================
@@ -67,7 +116,7 @@ scene.add(camera);
 // flash tiro
 const flash = new THREE.PointLight(0xffaa00,2,3);
 gun.add(flash);
-flash.visible = false;
+flash.visible=false;
 window.flash = flash;
 
 // ================= PLAYER =================
@@ -136,7 +185,6 @@ socket.on("playerLeft", data=>{
   setTimeout(()=>msg.remove(),3000);
 });
 
-// jogadores já conectados
 socket.on("existingPlayers", players=>{
   players.forEach(p=>{
     if(p.id === socket.id) return;
