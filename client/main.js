@@ -107,9 +107,9 @@ for(let i=0;i<40;i++){
 const photoLoader = new THREE.TextureLoader();
 
 const photos = [
-  "https://upload.wikimedia.org/wikipedia/commons/5/5c/Paranagua_Harbor.jpg",
-  "https://upload.wikimedia.org/wikipedia/commons/3/3a/Paranagua_city.jpg",
-  "https://upload.wikimedia.org/wikipedia/commons/0/0c/Ilha_do_Mel_Parana.jpg"
+  "https://www.administracao.pr.gov.br/sites/default/arquivos_restritos/files/imagem/2025-07/8144.jpg",
+  "https://melevaviajar.com.br/wp-content/uploads/2022/10/O-que-fazer-em-Paranagua-rua-da-praia.jpg",
+  "https://melevaviajar.com.br/wp-content/uploads/2022/10/O-que-fazer-em-Paranagua.jpg"
 ];
 
 function createBillboard(x, z, img){
